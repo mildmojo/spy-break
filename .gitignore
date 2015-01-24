@@ -1,4 +1,4 @@
-node_modules/*
-bower_components/*
+node_modules
+js/vendor
 bundle.js
 .bundle.js
