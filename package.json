@@ -10,7 +10,8 @@
     ]
   },
   "browserify-shim": {
-    "phaser": "global:Phaser"
+    "phaser": "global:Phaser",
+    "modernizr": "global:Modernizr"
   },
   "devDependencies": {
     "brfs": "^1.2.0",
