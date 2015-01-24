@@ -1,0 +1,26 @@
+{
+  "name": "spybreak",
+  "version": "1.0.0",
+  "main": "main.js",
+  "browserify": {
+    "transform": [
+      "brfs",
+      "browserify-shim",
+      "debowerify"
+    ]
+  },
+  "browserify-shim": {
+    "phaser": "global:Phaser"
+  },
+  "devDependencies": {
+    "brfs": "^1.2.0",
+    "browserify": "^4.2.3",
+    "browserify-shim": "^3.6.0",
+    "debowerify": "^0.8.1"
+  },
+  "dependencies": {
+    "async": "^0.9.0",
+    "dat-gui": "^0.5.0",
+    "lodash": "2.4.x"
+  }
+}

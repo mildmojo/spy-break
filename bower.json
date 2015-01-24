@@ -1,0 +1,21 @@
+{
+  "name": "spybreak",
+  "version": "1.0.0",
+  "description": "Collaborative multiplayer spy game.",
+  "main": "js/init.js",
+  "moduleType": [
+    "node"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "phaser": "~2.2.2"
+  }
+}
