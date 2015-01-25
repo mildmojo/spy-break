@@ -21,7 +21,12 @@
   },
   "dependencies": {
     "async": "^0.9.0",
+    "color": "^0.7.3",
     "dat-gui": "^0.5.0",
-    "lodash": "2.4.x"
+    "express": "^4.11.1",
+    "lodash": "2.4.x",
+    "normalize.css": "^3.0.2",
+    "sockjs": "^0.3.12",
+    "sockjs-client": "^1.0.0-beta.10"
   }
 }

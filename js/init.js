@@ -1,8 +1,13 @@
 var path = require('path');
 var Phaser = require('phaser');
 var _ = require('lodash');
-var dat = require('dat-gui');
+// var dat = require('dat-gui');
 var async = require('async');
+
+var TitleScene = require('./scenes/title.js');
+var MenuScene = require('./scenes/menu.js');
+var GameScene = require('./scenes/game.js');
+var CreditsScene = require('./scenes/credits.js');
 
 var isDecoded = false;
 var statusText = null;
@@ -13,10 +18,10 @@ var soundsLoaded = {
 
 // DEBUGGING
 window.game = game;
-window.gui = new dat.GUI();
+// window.gui = new dat.GUI();
 // DEBUGGING
 
-var STAGE_BACKGROUND = '#3f261c';
+var STAGE_BACKGROUND = '#1a1a1a';
 
 var activeScene;
 
@@ -28,6 +33,8 @@ window.game = game;
  * INITIALIZE
  ******************************************************************************/
 function preload() {
+  initScreen();
+
   statusText = game.add.text(10,10,'Load started', {fill: '#FFF'});
 
   game.load.onLoadStart.add(loadStart);
@@ -36,6 +43,36 @@ function preload() {
   game.sound.onSoundDecode.add(soundDecoded);
 
   preloadScenes();
+}
+
+function initScreen() {
+  game.stage.backgroundColor = STAGE_BACKGROUND;
+
+  if (game.device.desktop) {
+      game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+      game.scale.minWidth = 320;
+      game.scale.minHeight = 480;
+      game.scale.maxWidth = 1080;
+      game.scale.maxHeight = 1920;
+      game.scale.pageAlignHorizontally = true;
+      game.scale.pageAlignVertically = true;
+      game.scale.setScreenSize(true);
+  } else {
+      game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+      game.scale.minWidth = 277;
+      game.scale.minHeight = 416;
+      game.scale.maxWidth = 1080;
+      game.scale.maxHeight = 1920;
+      game.scale.pageAlignHorizontally = true;
+      game.scale.pageAlignVertically = true;
+      game.scale.forceOrientation(false, true);
+      // game.scale.hasResized.add(screenResized, this);
+      // game.scale.enterIncorrectOrientation.add(this.enterIncorrectOrientation, this);
+      // game.scale.leaveIncorrectOrientation.add(this.leaveIncorrectOrientation, this);
+      game.scale.setScreenSize(true);
+      game.scale.setShowAll();
+      game.scale.refresh();
+  }
 }
 
 function preloadScenes(db) {
@@ -92,6 +129,10 @@ function soundDecoded() {
     isDecoded = true;
     create();
   }
+}
+
+function screenResized() {
+  console.log('Screen resized! ' + [].slice.call(arguments).join(', '));
 }
 
 function create() {
