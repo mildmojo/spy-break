@@ -3,7 +3,9 @@ var Phaser = require('phaser');
 var _ = require('lodash');
 // var dat = require('dat-gui');
 var async = require('async');
+var SockJS = require('sockjs-client');
 
+var ClientRouter = require('./client_router.js');
 var TitleScene = require('./scenes/title.js');
 var MenuScene = require('./scenes/menu.js');
 var GameScene = require('./scenes/game.js');
@@ -16,18 +18,34 @@ var soundsLoaded = {
   total: 0
 };
 
-// DEBUGGING
-window.game = game;
-// window.gui = new dat.GUI();
-// DEBUGGING
-
 var STAGE_BACKGROUND = '#1a1a1a';
 
 var activeScene;
 
 // CREATE GAME
 var game = new Phaser.Game(800, 480, Phaser.AUTO, 'content', { preload: preload, update: update });
+
+// DEBUGGING
 window.game = game;
+// window.gui = new dat.GUI();
+// DEBUGGING
+
+/*******************************************************************************
+ * WARNING: MUST UPDATE sockjs-client DEP url-parse TO 1.0.0 OR CLIENTS WILL
+ * FAIL WITH 'too much recursion' ERROR MESSAGE
+ ******************************************************************************/
+var url = 'http://localhost:3000/rooms';
+var socket = new SockJS(url);
+var clientRouter = new ClientRouter(socket);
+clientRouter.on('clientJoin', function(id) {
+  console.log('Saw client join: ' + id);
+});
+clientRouter.on('syncState', function(state) {
+  console.log('Saw sync: ' + require('util').inspect(state));
+});
+clientRouter.on('connect', function() {
+  clientRouter.joinRoom('test-room');
+});
 
 /*******************************************************************************
  * INITIALIZE
