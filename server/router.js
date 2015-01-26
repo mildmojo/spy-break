@@ -5,6 +5,13 @@ var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var _ = require('lodash');
 
+/*
+  client messages:
+  - clientJoin:<id> - someone joined
+  - clientLeave:<id> - someone left
+  - reconnectFailed - client wanted to reconnect to room, but room has no record
+*/
+
 module.exports = Router;
 
 util.inherits(Router, EventEmitter);
@@ -67,6 +74,7 @@ console.log('GOT MESSSAGE: %s', data);
         this.emit('resync', room, client);
       } else {
         console.log('Bad reconnect');
+        client.emit('reconnectFailed');
         // redirect to front page?
       }
     },
@@ -79,6 +87,17 @@ console.log('GOT MESSSAGE: %s', data);
         this._rooms = _(this._rooms).omit(roomName);
         this.emit('room_removed', room);
       }
+    },
+    updateValues: function(roomName, body) {
+      var room = this._rooms[roomName];
+      if (!room) return;
+      var bodyObj;
+      try {
+        bodyObj = JSON.parse(body);
+      } catch(e) {
+        console.error("Ignoring bad JSON updateValues command from '%s': %s", client.id, body);
+      }
+      room.updateValues(client, bodyObj);
     }
   };
 
@@ -89,6 +108,9 @@ console.log('GOT MESSSAGE: %s', data);
 };
 
 
+/*******************************************************************************
+ * CLIENT
+ ******************************************************************************/
 function Client(socket) {
   if (!(this instanceof Client)) return new Client(socket);
   this.socket = socket;
@@ -100,6 +122,8 @@ function Client(socket) {
 var $classClient = Client.prototype;
 
 $classClient.joinRoom = function(room) {
+  // Joining should leave any other room joined.
+  if (this.room) this.room.removeClient(this);
   this.room = room;
 };
 
@@ -108,7 +132,7 @@ $classClient.leaveRoom = function() {
 };
 
 $classClient.emit = function(message) {
-  this.socket.send(message);
+  this.socket.write(message);
 };
 
 $classClient.toJSON = function() {
@@ -125,7 +149,8 @@ $classClient.fromJSON = function(json) {
 };
 
 $classClient._genID = function(length) {
-  var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // Alphanumerics except visually ambiguous ones (0/O, I/l).
+  var chars = '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
   var result = '';
   for (var i = length; i > 0; --i) {
     result += chars[Math.round(Math.random() * (chars.length - 1))];
@@ -134,6 +159,11 @@ $classClient._genID = function(length) {
 };
 
 
+/*******************************************************************************
+ * ROOM
+ ******************************************************************************/
+util.inherits(Room, EventEmitter);
+
 function Room(roomName) {
   this.id = roomName || this._genID(5);
   this.clients = [];
@@ -141,14 +171,28 @@ function Room(roomName) {
 
 var $classRoom = Room.prototype;
 
-$classRoom.addClient = function(client) {
-  this.broadcast('client', 'join', client.toJSON());
-  this.clients.push(client);
+$classRoom.getClients = function() {
+  return this.clients;
+};
+
+$classRoom.addClient = function(newClient) {
+  // Tell everyone else in the room there's a new client.
+  this.broadcast('clientJoin', newClient.id);
+  // Tell the new client about all the existing clients in the room.
+  this.clients.forEach(function(existingClient) {
+    newClient.emit('clientJoin:' + existingClient.id);
+  });
+  this.clients.push(newClient);
+  // Tell local listeners about the new client.
+  this.emit('clientJoin', newClient);
 };
 
 $classRoom.removeClient = function(client) {
   this.clients = _(this.clients).without(client);
-  this.broadcast('client', 'leave', client.toJSON());
+  // Tell remaining clients in this room about the departure.
+  this.broadcast('clientLeave', client.id);
+  // Tell local listeners about the departure.
+  this.emit('clientLeave', client);
 };
 
 // Silently replace outdated client object with new client & socket.
@@ -161,6 +205,10 @@ $classRoom.spliceClient = function(newClient) {
 
 $classRoom.hasClients = function() {
   return !!this.clients.length;
+};
+
+$classRoom.updateValues = function(client, bodyObj) {
+  this.emit('client:updateValues', client, bodyObj);
 };
 
 // Send network message to all clients. Argument can be a string or individual
@@ -179,7 +227,8 @@ $classRoom._toMessage = function() {
 };
 
 $classRoom._genID = function(length) {
-  var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  // Alphanumerics except visually ambiguous ones (0/O, I/l).
+  var chars = '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
   var result = '';
   for (var i = length; i > 0; --i) {
     result += chars[Math.round(Math.random() * (chars.length - 1))];
