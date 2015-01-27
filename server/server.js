@@ -34,6 +34,8 @@ function setupRoutes(app) {
   app.get('/bundle.js', staticFile('../bundle.js'));
   app.get('/node_modules/normalize.css/normalize.css',
           staticFile('../node_modules/normalize.css/normalize.css'));
+  app.get('/js/vendor/sockjs-client/dist/sockjs.js',
+          staticFile('../js/vendor/sockjs-client/dist/sockjs.js'));
 }
 
 function staticFile(filepath) {
@@ -47,7 +49,8 @@ function staticFile(filepath) {
 
 function setupSockJS(server) {
   var sockServer = SockJS.createServer({
-    sockjs_url: 'http://cdn.jsdelivr.net/sockjs/0.3.4/sockjs.min.js'
+    // For IFrame fallback.
+    sockjs_url: '/js/vendor/sockjs-client/dist/sockjs.js'
   });
   sockServer.installHandlers(server, {prefix: '/rooms'});
   return sockServer;
