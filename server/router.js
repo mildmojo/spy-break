@@ -33,13 +33,25 @@ $class.addClient = function(socket) {
   this._clients.push(client);
   socket.on('data', this.messageRouter.bind(this, client));
   socket.on('close', this.removeClient.bind(this, client));
+  return client;
 };
 
 $class.removeClient = function(client) {
   if (client.room) {
     this.messageRouter(client, '/rooms/' + client.room.id + '|leave');
   }
-  this._clients = _(this._clients).without(client);
+  this._clients = _(this._clients).without(client).value();
+};
+
+$class.addRoom = function(roomName) {
+  var room = new Room(roomName);
+  this._rooms[room.id] = room;
+  return room;
+};
+
+$class.removeRoom = function(room) {
+  this._rooms = _(this._rooms).omit(room.id).value();
+  this.emit('room_removed', room);
 };
 
 $class.messageRouter = function(client, data) {
@@ -49,17 +61,17 @@ console.log('GOT MESSSAGE: %s', data);
   var paths = parts[0].split('/').slice(1); // trim empty string from root slash
   var command = parts[1];
   var body = parts[2];
-  var commands = {
+
+  var clientCommands = {
     create: function(roomName) {
-      var room = new Room(roomName);
-      this._rooms[room.id] = room;
+      var room = this.addRoom(roomName);
       room.addClient(client);
       client.joinRoom(room);
       this.emit('room_added', room, client);
     },
     join: function(roomName) {
+      if (!roomName || !this._rooms[roomName]) return clientCommands.create.call(this, roomName);
       var room = this._rooms[roomName];
-      if (!roomName || !room) return commands.create.apply(this, arguments);
       room.addClient(client);
       client.joinRoom(room);
     },
@@ -84,8 +96,7 @@ console.log('GOT MESSSAGE: %s', data);
       room.removeClient(client);
       client.leaveRoom();
       if (!room.hasClients()) {
-        this._rooms = _(this._rooms).omit(roomName);
-        this.emit('room_removed', room);
+        this.removeRoom(room);
       }
     },
     updateValues: function(roomName, body) {
@@ -103,7 +114,7 @@ console.log('GOT MESSSAGE: %s', data);
 
   if (paths[0] === 'rooms') {
     var roomName = paths[1];
-    commands[command].call(this, roomName, body);
+    clientCommands[command].call(this, roomName, body);
   }
 };
 
@@ -123,11 +134,12 @@ var $classClient = Client.prototype;
 
 $classClient.joinRoom = function(room) {
   // Joining should leave any other room joined.
-  if (this.room) this.room.removeClient(this);
+  this.leaveRoom();
   this.room = room;
 };
 
 $classClient.leaveRoom = function() {
+  if (this.room) this.room.removeClient(this);
   this.room = null;
 };
 
@@ -188,7 +200,7 @@ $classRoom.addClient = function(newClient) {
 };
 
 $classRoom.removeClient = function(client) {
-  this.clients = _(this.clients).without(client);
+  this.clients = _(this.clients).without(client).value();
   // Tell remaining clients in this room about the departure.
   this.broadcast('clientLeave', client.id);
   // Tell local listeners about the departure.
@@ -199,7 +211,7 @@ $classRoom.removeClient = function(client) {
 $classRoom.spliceClient = function(newClient) {
   this.clients = _(this.clients).without(function(client) {
     return client.id === newClient;
-  });
+  }).value();
   this.clients.push(newClient);
 };
 
@@ -218,7 +230,7 @@ $classRoom.updateValues = function(client, bodyObj) {
 $classRoom.broadcast = function(message) {
   var msg = arguments.length > 1 ? this._toMessage.apply(this, arguments) : message;
   this.clients.forEach(function(client) {
-    client.emit(message);
+    client.emit(msg);
   });
 };
 
